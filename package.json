@@ -1,0 +1,20 @@
+{
+  "name": "slidewiki-codeanalysis",
+  "description": "A tool for analyzing the data flow in a react/fluxible app.",
+  "author": "Benjamin Wulff",
+  "license": "MPL-2.0",
+  "version": "2.0.0",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slidewiki/slidewiki-codeanalsis"
+  },
+  "engines": {
+    "node": "5.7.x"
+  },
+  "main": "reflux-analyzer.js",
+  "dependencies": {
+    "walk": "^2.3.9"
+  }
+}
+
