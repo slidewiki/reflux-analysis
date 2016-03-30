@@ -1,11 +1,11 @@
-var walk = require('walk');
+var sync = require("synchronize");
 var fs = require('fs');
 var analyzer = require('./analyzer.js');
 
 var rootDir;   // root directory of the project to be analyzed
 
-var errors = 
-{ 
+var errors =
+{
   NOPARAM : {code : -1, msg : "Usage: reflux-analyzer.js dir"},
   NOTDIR  : {code : -2, msg : "Not a directory: "},
   READERR : {code : -3, msg : "Unable to read directory: "}
@@ -13,30 +13,25 @@ var errors =
 
 // FUNCTIONS //
 
-function die(error) 
+function die(error)
 {
   process.stderr.write(error.msg + "\n");
   process.exit(error.code);
 }
 
-function print(str)
+function checkDir(path)
 {
-  process.stdout.write(str);
-}
-
-function checkDir(path) 
-{
-  try 
+  try
   {
     stats = fs.lstatSync(path);
 
-    if (!stats.isDirectory()) 
+    if (!stats.isDirectory())
     {
       errors.NOTDIR.msg += path;
-      die(errors.NOTDIR); 
-    }  
+      die(errors.NOTDIR);
+    }
   }
-  catch (e) 
+  catch (e)
   {
     errors.READERR.msg += path;
     die(errors.READERR);
@@ -45,14 +40,14 @@ function checkDir(path)
 
 //        //
 //  INIT  //
-//        // 
+//        //
 
 // check for path parameter
-if (process.argv[2]) 
+if (process.argv[2])
 {
   rootDir = process.argv[2];
 }
-else 
+else
 {
   die(errors.NOPARAM);
 }
@@ -64,21 +59,36 @@ checkDir(rootDir);
 //                 //
 
 componentsPath = rootDir + "/components";
-actionsPath   = rootDir + "/actions";
-storesPath    = rootDir + "/stores";
+actionsPath    = rootDir + "/actions";
+storesPath     = rootDir + "/stores";
 
-checkDir(componentPath); 
+checkDir(componentsPath);
 checkDir(actionsPath);
 checkDir(storesPath);
 
 // Component
 // in /components/.. + class TreePanel extends React.Component {
-components = analyzer.findPattern( componentsPath,
-  "class\s+{1}\s+extends\s+React.Component"
-);
+
+// fiber for working synchronously
+sync.fiber(function()
+{
+  components = analyzer.findLinesInDirectory
+  (
+    componentsPath,
+    new RegExp(/class\s+.*\s+extends\s+React.Component/g),
+    new RegExp(/class\s+(.*)\s+extends/)
+  );
+
+  console.log(components);
+});
 
 // Action
 // in /actions/.. + export default function renameTreeNode(context, payload, done) {
+// actions = analyzer.findLinesInDirectory
+// (
+//     actionsPath,
+//     new RegExp(/export\s+default\s+function\s+(.*)\((.*), (.*), (.*))/)
+// )
 
 // Store
 // in /stores/.. + class DeckTreeStore extends BaseStore
@@ -91,6 +101,11 @@ components = analyzer.findPattern( componentsPath,
 //    'DELETE_TREE_NODE_SUCCESS': 'deleteTreeNode',
 //    'ADD_TREE_NODE_SUCCESS': 'addTreeNode'
 // };
+// stores = analyzer.findLinesInDirectory
+// (
+//   storesPath,
+//   new RegExp(/class\s+(.*)\s+extends\s+BaseStore/)
+// )
 
 // Calls: Component -> Action
 // inside component: import toggleTreeNode from '../../../actions/decktree/toggleTreeNode';
@@ -100,9 +115,3 @@ components = analyzer.findPattern( componentsPath,
 
 // Data: Store -> Component
 // inside component: import DeckTreeStore from '../../../stores/DeckTreeStore';
-
-
-
-
-
-
