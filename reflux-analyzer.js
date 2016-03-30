@@ -1,5 +1,6 @@
 var sync = require("synchronize");
 var fs = require('fs');
+var textFilesLoader = require("text-files-loader");
 var analyzer = require('./analyzer.js');
 
 var rootDir;   // root directory of the project to be analyzed
@@ -52,43 +53,100 @@ else
   die(errors.NOPARAM);
 }
 
-checkDir(rootDir);
+// prepare text-files-loader
+textFilesLoader.setup(
+{
+  recursive: true,
+  matchRegExp: /\.js/
+});
 
 //                 //
 //  CODE ANALYSIS  //
 //                 //
-
-componentsPath = rootDir + "/components";
-actionsPath    = rootDir + "/actions";
-storesPath     = rootDir + "/stores";
-
-checkDir(componentsPath);
-checkDir(actionsPath);
-checkDir(storesPath);
-
-// Component
-// in /components/.. + class TreePanel extends React.Component {
-
-// fiber for working synchronously
 sync.fiber(function()
 {
-  components = analyzer.findLinesInDirectory
+  var componentsPath = rootDir + "/components";
+  var actionsPath    = rootDir + "/actions";
+  var storesPath     = rootDir + "/stores";
+
+  checkDir(rootDir);
+
+  checkDir(componentsPath);
+  var componentCode = sync.await(textFilesLoader.load(componentsPath, sync.defer()));
+
+  checkDir(actionsPath);
+  var actionCode = sync.await(textFilesLoader.load(actionsPath, sync.defer()));
+
+  checkDir(storesPath);
+  var storeCode = sync.await(textFilesLoader.load(storesPath, sync.defer()));
+
+  // search for Component definitions
+  var components = analyzer.findLinesInContent
   (
-    componentsPath,
+    componentCode,
     new RegExp(/class\s+.*\s+extends\s+React.Component/g),
     new RegExp(/class\s+(.*)\s+extends/)
   );
 
+  console.log("COMPONENTS:");
   console.log(components);
-});
 
-// Action
-// in /actions/.. + export default function renameTreeNode(context, payload, done) {
-// actions = analyzer.findLinesInDirectory
-// (
-//     actionsPath,
-//     new RegExp(/export\s+default\s+function\s+(.*)\((.*), (.*), (.*))/)
-// )
+  // search for Action definitions
+  var actions = analyzer.findLinesInContent
+  (
+    actionCode,
+    new RegExp(/export\s+default\s+function\s+(.*)\(.*, .*, .*\)/g),
+    new RegExp(/function\s+(.*)\(.*, .*, .*\)/)
+  )
+
+  console.log("ACTIONS:");
+  console.log(actions);
+
+  // search for Store definitions
+  var stores = analyzer.findLinesInContent
+  (
+    storeCode,
+    new RegExp(/class\s+.*\s+extends\s+BaseStore/g),
+    new RegExp(/class\s+(.*)\s+extends/)
+  );
+
+  console.log("STROES:");
+  console.log(stores);
+
+  // search for Calls: Component -> Action
+  var calls = analyzer.findLinesInContent
+  (
+    componentCode,
+    new RegExp(/import\s+.*\s+from\s+\'.*\/actions\/.*\'/g),
+    new RegExp(/import\s+(.*)\s+from/)
+  );
+
+  console.log("CALLS:");
+  console.log(calls);
+
+  // search for Dispatch: Action -> Store
+  var dispatch = analyzer.findLinesInContent
+  (
+    actionCode,
+    new RegExp(/context\.dispatch\(\'.*\',\s?.*\);/g),
+    new RegExp(/dispatch\(\'(.*)\',/)
+  );
+
+  console.log("DISPATCH:");
+  console.log(dispatch);
+
+  // search for Updates: Store -> Component
+  var updates = analyzer.findLinesInContent
+  (
+    componentCode,
+    new RegExp(/import\s+.*\s+from\s+\'.*\/stores\/.*\'/g),
+    new RegExp(/import\s+(.*)\s+from/)
+  );
+
+  console.log("UPDATES:");
+  console.log(updates);
+
+});
 
 // Store
 // in /stores/.. + class DeckTreeStore extends BaseStore

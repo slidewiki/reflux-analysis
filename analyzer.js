@@ -3,25 +3,14 @@ sync = require("synchronize");
 
 module.exports = {
 
-    findLinesInDirectory : function( path, detect_pattern, extract_pattern )
+    findLinesInContent : function( content, detect_pattern, extract_pattern )
     {
-      var files;
       var data = [];
 
-      // prepare text-files-loader
-      textFilesLoader.setup(
-      {
-        recursive: true,
-        matchRegExp: /\.js/
-      });
-
-      // read file contents
-      files = sync.await(textFilesLoader.load(path, sync.defer()));
-
       // scan each file for lines matching detect_pattern
-      for (var filename in files)
+      for (var filename in content)
       {
-        var matches = files[filename].match(detect_pattern);
+        var matches = content[filename].match(detect_pattern);
 
         // if lines machting the detect_pattern were found
         if (matches != null && matches.length > 0)
