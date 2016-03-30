@@ -69,14 +69,18 @@ sync.fiber(function()
   var actionsPath    = rootDir + "/actions";
   var storesPath     = rootDir + "/stores";
 
+  // check if project dir is sane
   checkDir(rootDir);
 
+  // load rootDir/components/*.js
   checkDir(componentsPath);
   var componentCode = sync.await(textFilesLoader.load(componentsPath, sync.defer()));
 
+  // load rootDir/actions/*.js
   checkDir(actionsPath);
   var actionCode = sync.await(textFilesLoader.load(actionsPath, sync.defer()));
 
+  // load rootDir/stores/*.js
   checkDir(storesPath);
   var storeCode = sync.await(textFilesLoader.load(storesPath, sync.defer()));
 
@@ -106,12 +110,23 @@ sync.fiber(function()
   var stores = analyzer.findLinesInContent
   (
     storeCode,
-    new RegExp(/class\s+.*\s+extends\s+BaseStore/g),
+    new RegExp(/class\s+.*\s+extends\s+BaseStore/g),  // FIXME finds only children of BaseStore
     new RegExp(/class\s+(.*)\s+extends/)
   );
 
   console.log("STROES:");
   console.log(stores);
+
+  // search for Handlers in Stores
+  var handlers = analyzer.findLinesInContent
+  (
+    storeCode,
+    new RegExp(/\'[A-Z_]+\'\:\s?\'[A-Za-z]+\'/g),     // FIXME this is not a good pattern
+    new RegExp(/\'([A-Z_]+)\'\:\s?\'[A-Za-z]+\'/)
+  );
+
+  console.log("HANDLERS:");
+  console.log(handlers);
 
   // search for Calls: Component -> Action
   var calls = analyzer.findLinesInContent
