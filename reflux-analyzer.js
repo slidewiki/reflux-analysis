@@ -51,6 +51,41 @@ function contains(arr, str)
   return false;
 }
 
+function addToNodesList(nodeList, itemList, groupName, next_id)
+{
+  for (var file in itemList)
+  {
+    for (var i in itemList[file])
+    {
+      var label = itemList[file][i];
+      nodeList.push(
+      {
+        id:    next_id++,
+        label: label,
+        group: groupName
+      });
+    }
+  }
+  return next_id;
+}
+
+function addToEdgeList(nodeList, itemList, groupName, next_id)
+{
+  for (var file in itemList)
+  {
+    for (var i in itemList[file])
+    {
+      var label = itemList[file][i];
+      nodeList.push(
+      {
+        id:    next_id++,
+        label: label,
+        group: groupName
+      });
+    }
+  }
+}
+
 //        //
 //  INIT  //
 //        //
@@ -192,4 +227,23 @@ sync.fiber(function()
   if (DEBUG) console.log("UPDATES:");
   if (DEBUG) console.log(updates);
 
+  //                   //
+  //  GENERATE RESULT  //
+  //                   //
+
+  // create node list
+  var nodes = [];
+  var next_id = 0;
+
+  next_id = addToNodesList(nodes, components, "components", next_id);
+  next_id = addToNodesList(nodes, actions, "actions", next_id);
+  addToNodesList(nodes, stores, "stores", next_id);
+
+  console.log(nodes);
+
+  // create edge list
+  var edges = [];
+
+
+  //console.log(edges);
 });
