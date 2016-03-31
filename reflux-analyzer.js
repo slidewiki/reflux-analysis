@@ -2,6 +2,7 @@ var sync = require("synchronize");
 var fs = require('fs');
 var textFilesLoader = require("text-files-loader");
 var analyzer = require('./analyzer.js');
+var DEBUG = true;
 
 var rootDir;   // root directory of the project to be analyzed
 
@@ -37,6 +38,17 @@ function checkDir(path)
     errors.READERR.msg += path;
     die(errors.READERR);
   }
+}
+
+function contains(arr, str)
+{
+  for (item in arr)
+  {
+    if (item.indexOf(str) > -1) {
+      return true;
+    }
+  }
+  return false;
 }
 
 //        //
@@ -92,8 +104,8 @@ sync.fiber(function()
     new RegExp(/class\s+(.*)\s+extends/)
   );
 
-  console.log("COMPONENTS:");
-  console.log(components);
+  if (DEBUG) console.log("COMPONENTS:");
+  if (DEBUG) console.log(components);
 
   // search for Action definitions
   var actions = analyzer.findLinesInContent
@@ -103,8 +115,8 @@ sync.fiber(function()
     new RegExp(/function\s+(.*)\(.*, .*, .*\)/)
   )
 
-  console.log("ACTIONS:");
-  console.log(actions);
+  if (DEBUG) console.log("ACTIONS:");
+  if (DEBUG) console.log(actions);
 
   // search for Store definitions
   var stores = analyzer.findLinesInContent
@@ -114,8 +126,8 @@ sync.fiber(function()
     new RegExp(/class\s+(.*)\s+extends/)
   );
 
-  console.log("STROES:");
-  console.log(stores);
+  if (DEBUG) console.log("STROES:");
+  if (DEBUG) console.log(stores);
 
   // search for Handlers in Stores
   var handlers = analyzer.findLinesInContent
@@ -125,8 +137,8 @@ sync.fiber(function()
     new RegExp(/\'([A-Z_]+)\'\:\s?\'[A-Za-z]+\'/)
   );
 
-  console.log("HANDLERS:");
-  console.log(handlers);
+  if (DEBUG) console.log("HANDLERS:");
+  if (DEBUG) console.log(handlers);
 
   // search for Calls: Component -> Action
   var calls = analyzer.findLinesInContent
@@ -136,19 +148,38 @@ sync.fiber(function()
     new RegExp(/import\s+(.*)\s+from/)
   );
 
-  console.log("CALLS:");
-  console.log(calls);
+  if (DEBUG) console.log("CALLS:");
+  if (DEBUG) console.log(calls);
 
   // search for Dispatch: Action -> Store
-  var dispatch = analyzer.findLinesInContent
+  var dispatchHandlers = analyzer.findLinesInContent
   (
     actionCode,
     new RegExp(/context\.dispatch\(\'.*\',\s?.*\);/g),
     new RegExp(/dispatch\(\'(.*)\',/)
   );
 
-  console.log("DISPATCH:");
-  console.log(dispatch);
+  if (DEBUG) console.log("DISPATCH HANDLER CALLS:");
+  if (DEBUG) console.log(dispatchHandlers);
+
+  // resolve DISPATCH relations
+  var dispatch = [];
+  for (var filename in dispatchHandlers)
+  {
+    dispatch[filename] = [];
+
+    for (handler in dispatchHandlers[filename])
+    {
+      var handlerParent = analyzer.findFileContaining(handlers, handler);
+      if (handlerParent && !contains(dispatchHandlers[filename], handlerParent))
+      {
+        dispatch[filename].push(handlerParent);
+      }
+    }
+  }
+
+  if (DEBUG) console.log("DISPATCH RELATIONS:");
+  if (DEBUG) console.log(dispatch);
 
   // search for Updates: Store -> Component
   var updates = analyzer.findLinesInContent
@@ -158,33 +189,7 @@ sync.fiber(function()
     new RegExp(/import\s+(.*)\s+from/)
   );
 
-  console.log("UPDATES:");
-  console.log(updates);
+  if (DEBUG) console.log("UPDATES:");
+  if (DEBUG) console.log(updates);
 
 });
-
-// Store
-// in /stores/.. + class DeckTreeStore extends BaseStore
-// DeckTreeStore.handlers = {
-//    'LOAD_DECK_TREE_SUCCESS': 'updateDeckTree',
-//    'SELECT_TREE_NODE_SUCCESS': 'selectTreeNode',
-//    'TOGGLE_TREE_NODE_SUCCESS': 'toggleTreeNode',
-//    'RENAME_TREE_NODE_SUCCESS': 'renameTreeNode',
-//    'SAVE_TREE_NODE_SUCCESS': 'saveTreeNode',
-//    'DELETE_TREE_NODE_SUCCESS': 'deleteTreeNode',
-//    'ADD_TREE_NODE_SUCCESS': 'addTreeNode'
-// };
-// stores = analyzer.findLinesInDirectory
-// (
-//   storesPath,
-//   new RegExp(/class\s+(.*)\s+extends\s+BaseStore/)
-// )
-
-// Calls: Component -> Action
-// inside component: import toggleTreeNode from '../../../actions/decktree/toggleTreeNode';
-
-// Dispatch: Action -> Store
-// inside action: context.dispatch('RENAME_TREE_NODE_SUCCESS', payload);
-
-// Data: Store -> Component
-// inside component: import DeckTreeStore from '../../../stores/DeckTreeStore';
