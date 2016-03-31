@@ -69,18 +69,32 @@ function addToNodesList(nodeList, itemList, groupName, next_id)
   return next_id;
 }
 
-function addToEdgeList(nodeList, itemList, groupName, next_id)
+function findInNodeList(nodeList, searchStr)
 {
-  for (var file in itemList)
+  for(var i in nodeList)
   {
-    for (var i in itemList[file])
+    var item = nodeList[i];
+    if (item.label.indexOf(searchStr) > -1) {
+      return item.id;
+    }
+  }
+  return undefined;
+}
+
+function addToEdgeList(nodeList, edgeList, relationList)
+{
+  for (var file in relationList)
+  {
+    var fromID = findInNodeList(nodeList, file);
+    if (fromID === undefined) throw("(FROM) Node index for " + file + " not found!");
+    for (var i in relationList[file])
     {
-      var label = itemList[file][i];
-      nodeList.push(
+      var toID = findInNodeList(nodeList, relationList[file][i]);
+      if (toID === undefined) throw("(TO) Node index for " + relationList[file][i] + " not found!");
+      edgeList.push(
       {
-        id:    next_id++,
-        label: label,
-        group: groupName
+        form: fromID,
+        to: toID
       });
     }
   }
@@ -243,7 +257,9 @@ sync.fiber(function()
 
   // create edge list
   var edges = [];
+  addToEdgeList(nodes, edges, calls);
+  addToEdgeList(nodes, edges, dispatch);
+  addToEdgeList(nodes, edges, updates);
 
-
-  //console.log(edges);
+  console.log(edges);
 });
