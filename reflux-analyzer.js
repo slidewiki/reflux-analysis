@@ -81,7 +81,7 @@ function findInNodeList(nodeList, searchStr)
   return undefined;
 }
 
-function addToEdgeList(nodeList, edgeList, relationList)
+function addToEdgeList(nodeList, edgeList, relationList, label, arrowDir)
 {
   for (var file in relationList)
   {
@@ -93,8 +93,10 @@ function addToEdgeList(nodeList, edgeList, relationList)
       if (toID === undefined) throw("(TO) Node index for " + relationList[file][i] + " not found!");
       edgeList.push(
       {
-        form: fromID,
-        to: toID
+        from: fromID,
+        to: toID,
+        label: label,
+        arrows: arrowDir
       });
     }
   }
@@ -217,10 +219,12 @@ sync.fiber(function()
   {
     dispatch[filename] = [];
 
-    for (handler in dispatchHandlers[filename])
+    for (var handler_idx in dispatchHandlers[filename])
     {
+      var handler = dispatchHandlers[filename][handler_idx];
       var handlerParent = analyzer.findFileContaining(handlers, handler);
-      if (handlerParent && !contains(dispatchHandlers[filename], handlerParent))
+      console.log(filename + " -> " + handlerParent);
+      if (handlerParent && !contains(dispatch[filename], handlerParent))
       {
         dispatch[filename].push(handlerParent);
       }
@@ -249,17 +253,17 @@ sync.fiber(function()
   var nodes = [];
   var next_id = 0;
 
-  next_id = addToNodesList(nodes, components, "components", next_id);
+  next_id = addToNodesList(nodes, stores, "stores", next_id);
   next_id = addToNodesList(nodes, actions, "actions", next_id);
-  addToNodesList(nodes, stores, "stores", next_id);
+  next_id = addToNodesList(nodes, components, "components", next_id);
 
   console.log(nodes);
 
   // create edge list
   var edges = [];
-  addToEdgeList(nodes, edges, calls);
-  addToEdgeList(nodes, edges, dispatch);
-  addToEdgeList(nodes, edges, updates);
+  addToEdgeList(nodes, edges, calls, "call", "to");
+  addToEdgeList(nodes, edges, dispatch, "dispatch", "to");
+  addToEdgeList(nodes, edges, updates, "update", "from");
 
   console.log(edges);
 });

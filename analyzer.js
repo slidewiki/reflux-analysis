@@ -32,13 +32,14 @@ module.exports = {
   ,
     findFileContaining : function( files, searchString )
     {
-      var data = [];
-
-      for (filename in files)
+      for (var filename in files)
       {
-        for (item in files[filename])
+        for (item_idx in files[filename])
         {
-          if (item.indexOf(searchString) > -1) {
+          var item = files[filename][item_idx];
+          console.log("ITEM: " + item);
+          if (item.indexOf(searchString) > -1)
+          {
             return filename;
           }
         }
