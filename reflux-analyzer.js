@@ -38,6 +38,10 @@ var pattern =
   UPDATE : {
     detect : new RegExp(/import\s+.*\s+from\s+\'.*\/stores\/.*\'/g),
     extract: new RegExp(/import\s+(.*)\s+from/)
+  },
+  COMPCOMP : {
+    detect : new RegExp(/import\s+.*\s+from\s+\'.*\/components\/.*\'/g),
+    extract: new RegExp(/import\s+(.*)\s+from/)
   }
 };
 
@@ -109,6 +113,10 @@ sync.fiber(function()
   var updates = analysis.findLinesInContent(componentCode, pattern.UPDATE);
   if (DEBUG) helper.printList("UPDATES:", updates);
 
+  // search for Components importing other components
+  var compcomp = analysis.findLinesInContent(componentCode, pattern.COMPCOMP);
+  if (DEBUG) helper.printList("COMPCOMP:", compcomp);
+
   // resolve DISPATCH relations
   var dispatch = [];
   for (var filename in dispatchHandlers)
@@ -144,9 +152,9 @@ sync.fiber(function()
 
   // create edge list
   var edges = [];
-  lists.addToEdgeList(nodes, edges, calls, "call", "to");
-  lists.addToEdgeList(nodes, edges, dispatch, "dispatch", "to");
-  lists.addToEdgeList(nodes, edges, updates, "update", "from");
+  lists.addToEdgeList(nodes, edges, calls, "call", "to", {color:'blue'});
+  lists.addToEdgeList(nodes, edges, dispatch, "dispatch", "to", {color:'green'});
+  lists.addToEdgeList(nodes, edges, updates, "update", "from", {color:'brown'});
 
   console.log(edges);
 });

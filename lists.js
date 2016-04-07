@@ -43,7 +43,7 @@ module.exports = {
     return undefined;
   }
 ,
-  addToEdgeList : function(nodeList, edgeList, relationList, label, arrowDir)
+  addToEdgeList : function(nodeList, edgeList, relationList, label, arrowDir, color)
   {
     for (var file in relationList)
     {
@@ -76,7 +76,8 @@ module.exports = {
           from: fromID,
           to: toID,
           label: label,
-          arrows: arrowDir
+          arrows: arrowDir,
+          color: color
         });
       }
     }
