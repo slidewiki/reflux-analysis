@@ -1,106 +1,45 @@
 var sync = require("synchronize");
-var fs = require('fs');
 var textFilesLoader = require("text-files-loader");
-var analyzer = require('./analyzer.js');
+var analysis = require('./analysis.js');
+var helper = require('./helper.js');
+var lists = require('./lists.js')
+
 var DEBUG = true;
 
 var rootDir;   // root directory of the project to be analyzed
 
-var errors =
+// detection and extraction patterns
+var pattern =
 {
-  NOPARAM : {code : -1, msg : "Usage: reflux-analyzer.js dir"},
-  NOTDIR  : {code : -2, msg : "Not a directory: "},
-  READERR : {code : -3, msg : "Unable to read directory: "}
-}
-
-// FUNCTIONS //
-
-function die(error)
-{
-  process.stderr.write(error.msg + "\n");
-  process.exit(error.code);
-}
-
-function checkDir(path)
-{
-  try
-  {
-    stats = fs.lstatSync(path);
-
-    if (!stats.isDirectory())
-    {
-      errors.NOTDIR.msg += path;
-      die(errors.NOTDIR);
-    }
+  COMPONENT : {
+    detect : new RegExp(/class\s+.*\s+extends\s+React.Component/g),
+    extract: new RegExp(/class\s+(.*)\s+extends/)
+  },
+  ACTION : {
+    detect : new RegExp(/export\s+default\s+function\s+(.*)\(.*, .*, .*\)/g),
+    extract: new RegExp(/function\s+(.*)\(.*, .*, .*\)/)
+  },
+  STORE : {
+    detect : new RegExp(/class\s+.*\s+extends\s+BaseStore/g),  // FIXME finds only children of BaseStore
+    extract: new RegExp(/class\s+(.*)\s+extends/)
+  },
+  HANDLER: {
+    detect : new RegExp(/\'[A-Z_]+\'\:\s?\'[A-Za-z]+\'/g),     // FIXME this is not a good pattern
+    extract: new RegExp(/\'([A-Z_]+)\'\:\s?\'[A-Za-z]+\'/)
+  },
+  CALLS : {
+    detect : new RegExp(/import\s+.*\s+from\s+\'.*\/actions\/.*\'/g),
+    extract: new RegExp(/import\s+(.*)\s+from/)
+  },
+  DISPATCH : {
+    detect : new RegExp(/context\.dispatch\(\'.*\',\s?.*\);/g),
+    extract: new RegExp(/dispatch\(\'(.*)\',/)
+  },
+  UPDATE : {
+    detect : new RegExp(/import\s+.*\s+from\s+\'.*\/stores\/.*\'/g),
+    extract: new RegExp(/import\s+(.*)\s+from/)
   }
-  catch (e)
-  {
-    errors.READERR.msg += path;
-    die(errors.READERR);
-  }
-}
-
-function contains(arr, str)
-{
-  for (item in arr)
-  {
-    if (item.indexOf(str) > -1) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function addToNodesList(nodeList, itemList, groupName, next_id)
-{
-  for (var file in itemList)
-  {
-    for (var i in itemList[file])
-    {
-      var label = itemList[file][i];
-      nodeList.push(
-      {
-        id:    next_id++,
-        label: label,
-        group: groupName
-      });
-    }
-  }
-  return next_id;
-}
-
-function findInNodeList(nodeList, searchStr)
-{
-  for(var i in nodeList)
-  {
-    var item = nodeList[i];
-    if (item.label.indexOf(searchStr) > -1) {
-      return item.id;
-    }
-  }
-  return undefined;
-}
-
-function addToEdgeList(nodeList, edgeList, relationList, label, arrowDir)
-{
-  for (var file in relationList)
-  {
-    var fromID = findInNodeList(nodeList, file);
-    if (fromID === undefined) throw("(FROM) Node index for " + file + " not found!");
-    for (var i in relationList[file])
-    {
-      var toID = findInNodeList(nodeList, relationList[file][i]);
-      if (toID === undefined) throw("(TO) Node index for " + relationList[file][i] + " not found!");
-      edgeList.push(
-      {
-        from: fromID,
-        to: toID,
-        label: label,
-        arrows: arrowDir
-      });
-    }
-  }
-}
+};
 
 //        //
 //  INIT  //
@@ -108,13 +47,22 @@ function addToEdgeList(nodeList, edgeList, relationList, label, arrowDir)
 
 // check for path parameter
 if (process.argv[2])
-{
   rootDir = process.argv[2];
-}
 else
-{
-  die(errors.NOPARAM);
-}
+  helper.die({code : -1, msg : "Usage: reflux-analyzer.js dir"});
+
+// check if project dir is sane
+helper.checkDir(rootDir);
+
+// make paths
+var componentsPath = rootDir + "/components";
+var actionsPath    = rootDir + "/actions";
+var storesPath     = rootDir + "/stores";
+
+// check if sub-dirs are sane
+helper.checkDir(componentsPath);
+helper.checkDir(actionsPath);
+helper.checkDir(storesPath);
 
 // prepare text-files-loader
 textFilesLoader.setup(
@@ -128,90 +76,38 @@ textFilesLoader.setup(
 //                 //
 sync.fiber(function()
 {
-  var componentsPath = rootDir + "/components";
-  var actionsPath    = rootDir + "/actions";
-  var storesPath     = rootDir + "/stores";
-
-  // check if project dir is sane
-  checkDir(rootDir);
-
-  // load rootDir/components/*.js
-  checkDir(componentsPath);
+  // load contents of js files in sub-dirs
   var componentCode = sync.await(textFilesLoader.load(componentsPath, sync.defer()));
-
-  // load rootDir/actions/*.js
-  checkDir(actionsPath);
   var actionCode = sync.await(textFilesLoader.load(actionsPath, sync.defer()));
-
-  // load rootDir/stores/*.js
-  checkDir(storesPath);
   var storeCode = sync.await(textFilesLoader.load(storesPath, sync.defer()));
 
   // search for Component definitions
-  var components = analyzer.findLinesInContent
-  (
-    componentCode,
-    new RegExp(/class\s+.*\s+extends\s+React.Component/g),
-    new RegExp(/class\s+(.*)\s+extends/)
-  );
-
-  if (DEBUG) console.log("COMPONENTS:");
-  if (DEBUG) console.log(components);
+  var components = analysis.findLinesInContent(componentCode, pattern.COMPONENT);
+  if (DEBUG) helper.printList("COMPONENTS:", components);
 
   // search for Action definitions
-  var actions = analyzer.findLinesInContent
-  (
-    actionCode,
-    new RegExp(/export\s+default\s+function\s+(.*)\(.*, .*, .*\)/g),
-    new RegExp(/function\s+(.*)\(.*, .*, .*\)/)
-  )
-
-  if (DEBUG) console.log("ACTIONS:");
-  if (DEBUG) console.log(actions);
+  var actions = analysis.findLinesInContent(actionCode, pattern.ACTION)
+  if (DEBUG) helper.printList("ACTIONS:", actions);
 
   // search for Store definitions
-  var stores = analyzer.findLinesInContent
-  (
-    storeCode,
-    new RegExp(/class\s+.*\s+extends\s+BaseStore/g),  // FIXME finds only children of BaseStore
-    new RegExp(/class\s+(.*)\s+extends/)
-  );
-
-  if (DEBUG) console.log("STROES:");
-  if (DEBUG) console.log(stores);
+  var stores = analysis.findLinesInContent(storeCode, pattern.STORE);
+  if (DEBUG) helper.printList("STROES:", stores);
 
   // search for Handlers in Stores
-  var handlers = analyzer.findLinesInContent
-  (
-    storeCode,
-    new RegExp(/\'[A-Z_]+\'\:\s?\'[A-Za-z]+\'/g),     // FIXME this is not a good pattern
-    new RegExp(/\'([A-Z_]+)\'\:\s?\'[A-Za-z]+\'/)
-  );
-
-  if (DEBUG) console.log("HANDLERS:");
-  if (DEBUG) console.log(handlers);
+  var handlers = analysis.findLinesInContent(storeCode, pattern.HANDLER);
+  if (DEBUG) helper.printList("HANDLERS:", handlers);
 
   // search for Calls: Component -> Action
-  var calls = analyzer.findLinesInContent
-  (
-    componentCode,
-    new RegExp(/import\s+.*\s+from\s+\'.*\/actions\/.*\'/g),
-    new RegExp(/import\s+(.*)\s+from/)
-  );
-
-  if (DEBUG) console.log("CALLS:");
-  if (DEBUG) console.log(calls);
+  var calls = analysis.findLinesInContent(componentCode, pattern.CALLS);
+  if (DEBUG) helper.printList("CALLS:", calls);
 
   // search for Dispatch: Action -> Store
-  var dispatchHandlers = analyzer.findLinesInContent
-  (
-    actionCode,
-    new RegExp(/context\.dispatch\(\'.*\',\s?.*\);/g),
-    new RegExp(/dispatch\(\'(.*)\',/)
-  );
+  var dispatchHandlers = analysis.findLinesInContent(actionCode, pattern.DISPATCH);
+  if (DEBUG) helper.printList("DISPATCH HANDLER CALLS:", dispatchHandlers);
 
-  if (DEBUG) console.log("DISPATCH HANDLER CALLS:");
-  if (DEBUG) console.log(dispatchHandlers);
+  // search for Updates: Store -> Component
+  var updates = analysis.findLinesInContent(componentCode, pattern.UPDATE);
+  if (DEBUG) helper.printList("UPDATES:", updates);
 
   // resolve DISPATCH relations
   var dispatch = [];
@@ -222,28 +118,15 @@ sync.fiber(function()
     for (var handler_idx in dispatchHandlers[filename])
     {
       var handler = dispatchHandlers[filename][handler_idx];
-      var handlerParent = analyzer.findFileContaining(handlers, handler);
-      console.log(filename + " -> " + handlerParent);
-      if (handlerParent && !contains(dispatch[filename], handlerParent))
+      var handlerParent = analysis.findFileContaining(handlers, handler);
+      //if (DEBUG) console.log(filename + " -> " + handlerParent);
+      if (handlerParent && !lists.contains(dispatch[filename], handlerParent))
       {
         dispatch[filename].push(handlerParent);
       }
     }
   }
-
-  if (DEBUG) console.log("DISPATCH RELATIONS:");
-  if (DEBUG) console.log(dispatch);
-
-  // search for Updates: Store -> Component
-  var updates = analyzer.findLinesInContent
-  (
-    componentCode,
-    new RegExp(/import\s+.*\s+from\s+\'.*\/stores\/.*\'/g),
-    new RegExp(/import\s+(.*)\s+from/)
-  );
-
-  if (DEBUG) console.log("UPDATES:");
-  if (DEBUG) console.log(updates);
+  if (DEBUG) helper.printList("DISPATCH RELATIONS:", dispatch);
 
   //                   //
   //  GENERATE RESULT  //
@@ -253,17 +136,17 @@ sync.fiber(function()
   var nodes = [];
   var next_id = 0;
 
-  next_id = addToNodesList(nodes, stores, "stores", next_id);
-  next_id = addToNodesList(nodes, actions, "actions", next_id);
-  next_id = addToNodesList(nodes, components, "components", next_id);
+  next_id = lists.addToNodesList(nodes, stores, "stores", next_id);
+  next_id = lists.addToNodesList(nodes, actions, "actions", next_id);
+  next_id = lists.addToNodesList(nodes, components, "components", next_id);
 
   console.log(nodes);
 
   // create edge list
   var edges = [];
-  addToEdgeList(nodes, edges, calls, "call", "to");
-  addToEdgeList(nodes, edges, dispatch, "dispatch", "to");
-  addToEdgeList(nodes, edges, updates, "update", "from");
+  lists.addToEdgeList(nodes, edges, calls, "call", "to");
+  lists.addToEdgeList(nodes, edges, dispatch, "dispatch", "to");
+  lists.addToEdgeList(nodes, edges, updates, "update", "from");
 
   console.log(edges);
 });

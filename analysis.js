@@ -3,8 +3,10 @@ sync = require("synchronize");
 
 module.exports = {
 
-    findLinesInContent : function( content, detect_pattern, extract_pattern )
+    findLinesInContent : function( content, pattern )
     {
+      var detect_pattern  = pattern.detect;
+      var extract_pattern = pattern.extract;
       var data = [];
 
       // scan each file for lines matching detect_pattern
@@ -15,7 +17,7 @@ module.exports = {
         // if lines machting the detect_pattern were found
         if (matches != null && matches.length > 0)
         {
-          // create enty for current file
+          // create enty for current fileaddToEdgeList
           data[filename] = [];
 
           // extract target pattern from lines
@@ -37,7 +39,7 @@ module.exports = {
         for (item_idx in files[filename])
         {
           var item = files[filename][item_idx];
-          console.log("ITEM: " + item);
+          //console.log("ITEM: " + item);
           if (item.indexOf(searchString) > -1)
           {
             return filename;
