@@ -40,7 +40,7 @@ var pattern =
     extract: new RegExp(/import\s+(.*)\s+from/)
   },
   COMPCOMP : {
-    detect : new RegExp(/import\s+.*\s+from\s+\'.*\/components\/.*\'/g),
+    detect : new RegExp(/import\s+.*\s+from\s+\'\.\/.*\'/g),
     extract: new RegExp(/import\s+(.*)\s+from/)
   }
 };
@@ -152,6 +152,7 @@ sync.fiber(function()
 
   // create edge list
   var edges = [];
+  lists.addToEdgeList(nodes, edges, compcomp, "uses", "to", {color:'black'});
   lists.addToEdgeList(nodes, edges, calls, "call", "to", {color:'blue'});
   lists.addToEdgeList(nodes, edges, dispatch, "dispatch", "to", {color:'green'});
   lists.addToEdgeList(nodes, edges, updates, "update", "from", {color:'brown'});

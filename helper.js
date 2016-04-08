@@ -15,11 +15,14 @@ module.exports = {
       stats = fs.lstatSync(path);
 
       if (!stats.isDirectory())
-        helper.die({code : -2, msg : "Not a directory: " + path});
+      {
+        process.stderr.write("Not a directory: " + path + "\n");
+        process.exit(-2);
+      }
     }
-    catch (e)
-    {
-      die({code : -3, msg : "Unable to read directory: "} + path);
+    catch (e) {
+      process.stderr.write("Unable to read directory: " + path + "\n");
+      process.exit(-3);
     }
   }
 ,

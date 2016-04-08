@@ -56,7 +56,7 @@ module.exports = {
         }
       }
 
-      if (fromID === undefined) throw("(FROM) Node index for " + file + " not found!");
+      if (fromID === undefined) console.log("WARN: (FROM) Node index for [" + file + "] not found!");
 
       for (var i in relationList[file])
       {
@@ -69,16 +69,19 @@ module.exports = {
           }
         }
 
-        if (toID === undefined) throw("(TO) Node index for " + relationList[file][i] + " not found!");
+        if (toID === undefined) console.log("WARN: (TO) Node index for [" + relationList[file][i] + "] not found!");
 
-        edgeList.push(
+        if (fromID !== undefined && toID !== undefined)
         {
-          from: fromID,
-          to: toID,
-          label: label,
-          arrows: arrowDir,
-          color: color
-        });
+          edgeList.push(
+          {
+            from: fromID,
+            to: toID,
+            label: label,
+            arrows: arrowDir,
+            color: color
+          });
+        }
       }
     }
   }

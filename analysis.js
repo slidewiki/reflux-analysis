@@ -24,7 +24,7 @@ module.exports = {
           for (var index in matches)
           {
             var result = matches[index].match(extract_pattern)
-            if (result != null) data[filename].push(result[1]);
+            if (result != null) data[filename].push(result[1].trim());
           }
         }
       }
