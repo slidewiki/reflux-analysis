@@ -6,6 +6,9 @@ var lists = require('./lists.js')
 
 var DEBUG = true;
 
+var urlPrefix = 'https://github.com/slidewiki/slidewiki-platform/blob/master/';
+//var urlPrefix = '--->';
+
 var rootDir;   // root directory of the project to be analyzed
 
 // detection and extraction patterns
@@ -53,7 +56,7 @@ var pattern =
 if (process.argv[2])
   rootDir = process.argv[2];
 else
-  helper.die({code : -1, msg : "Usage: reflux-analyzer.js dir"});
+  helper.die({code : -1, msg : "Usage: nodejs reflux-analyzer.js project_absolute_path"});
 
 // check if project dir is sane
 helper.checkDir(rootDir);
@@ -72,6 +75,7 @@ helper.checkDir(storesPath);
 textFilesLoader.setup(
 {
   recursive: true,
+  keysAsFullPath: true,
   matchRegExp: /\.js/
 });
 
@@ -82,8 +86,14 @@ sync.fiber(function()
 {
   // load contents of js files in sub-dirs
   var componentCode = sync.await(textFilesLoader.load(componentsPath, sync.defer()));
+      componentCode = lists.stripPaths(componentCode, rootDir);
   var actionCode = sync.await(textFilesLoader.load(actionsPath, sync.defer()));
+      actionCode = lists.stripPaths(actionCode, rootDir);
   var storeCode = sync.await(textFilesLoader.load(storesPath, sync.defer()));
+      storeCode = lists.stripPaths(storeCode, rootDir);
+
+  //console.log(componentCode)
+  //process.exit(0);
 
   // search for Component definitions
   var components = analysis.findLinesInContent(componentCode, pattern.COMPONENT);
@@ -105,7 +115,7 @@ sync.fiber(function()
   var calls = analysis.findLinesInContent(componentCode, pattern.CALLS);
   if (DEBUG) helper.printList("CALLS:", calls);
 
-  // search for Dispatch: Action -> Store
+  // search for Dispatching: Action -> Store
   var dispatchHandlers = analysis.findLinesInContent(actionCode, pattern.DISPATCH);
   if (DEBUG) helper.printList("DISPATCH HANDLER CALLS:", dispatchHandlers);
 
@@ -144,13 +154,14 @@ sync.fiber(function()
   var nodes = [];
   var next_id = 0;
 
-  next_id = lists.addToNodesList(nodes, stores, "stores", next_id);
-  next_id = lists.addToNodesList(nodes, actions, "actions", next_id);
-  next_id = lists.addToNodesList(nodes, components, "components", next_id);
+  next_id = lists.addToNodesList(nodes, stores, "stores", next_id, urlPrefix);
+  next_id = lists.addToNodesList(nodes, actions, "actions", next_id, urlPrefix);
+  next_id = lists.addToNodesList(nodes, components, "components", next_id, urlPrefix);
 
   console.log(nodes);
 
   // create edge list
+  // TODO fix edge list generation
   var edges = [];
   lists.addToEdgeList(nodes, edges, compcomp, "uses", "to", {color:'black'});
   lists.addToEdgeList(nodes, edges, calls, "call", "to", {color:'blue'});

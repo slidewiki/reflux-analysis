@@ -12,7 +12,7 @@ module.exports = {
       // scan each file for lines matching detect_pattern
       for (var filename in content)
       {
-        var matches = content[filename].match(detect_pattern);
+        var matches = content[filename].code.match(detect_pattern);
 
         // if lines machting the detect_pattern were found
         if (matches != null && matches.length > 0)
@@ -24,7 +24,7 @@ module.exports = {
           for (var index in matches)
           {
             var result = matches[index].match(extract_pattern)
-            if (result != null) data[filename].push(result[1].trim());
+            if (result != null) data[filename].push(result[1].trim());  
           }
         }
       }
@@ -34,13 +34,15 @@ module.exports = {
   ,
     findFileContaining : function( files, searchString )
     {
+      var sstr = searchString.trim().toLowerCase();
       for (var filename in files)
       {
         for (item_idx in files[filename])
         {
           var item = files[filename][item_idx];
           //console.log("ITEM: " + item);
-          if (item.indexOf(searchString) > -1)
+          var it = item.trim().toLowerCase();
+          if (it == sstr)
           {
             return filename;
           }

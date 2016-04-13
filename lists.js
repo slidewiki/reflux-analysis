@@ -13,18 +13,19 @@ module.exports = {
     return false;
   }
 ,
-  addToNodesList : function(nodeList, itemList, groupName, next_id)
+  addToNodesList : function(nodeList, itemList, groupName, next_id, urlPrefix)
   {
     for (var file in itemList)
     {
       for (var i in itemList[file])
       {
-        var label = itemList[file][i];
+        var item = itemList[file][i];
         nodeList.push(
         {
           id:    next_id++,
-          label: label,
-          group: groupName
+          label: item,
+          group: groupName,
+          github: urlPrefix + file
         });
       }
     }
@@ -85,5 +86,18 @@ module.exports = {
       }
     }
   }
-
+ ,
+  stripPaths : function(arr, rootDir)
+  {
+    out = []
+    prefix_len = rootDir.length;
+    for (var path in arr) {
+      var pathElms = path.split("/");
+      var filename = pathElms[pathElms.length-1];
+      var entity = filename.substr(0, filename.length-3);
+      rpath = path.substr(prefix_len);
+      out[rpath] = {path:rpath, filename:filename, label:entity, code:arr[path]};
+    }
+    return out;
+  }
 }
