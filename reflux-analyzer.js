@@ -4,7 +4,7 @@ var analysis = require('./analysis.js');
 var helper = require('./helper.js');
 var lists = require('./lists.js')
 
-var DEBUG = true;
+var DEBUG = false;
 
 var urlPrefix = 'https://github.com/slidewiki/slidewiki-platform/blob/master/';
 //var urlPrefix = '--->';
@@ -48,6 +48,33 @@ var pattern =
   }
 };
 
+function resolveRelations(rel, sarr)
+{
+  if (DEBUG) console.log("REL----------------------");
+  if (DEBUG) console.log(rel)
+  if (DEBUG) console.log("SARR---------------------");
+  if (DEBUG) console.log(sarr);
+
+  out = []
+  for (var filename in rel)
+  {
+    if (DEBUG) console.log("searching for " + filename);
+    out[filename] = [];
+
+    for (var idx in rel[filename])
+    {
+      var sitem = rel[filename][idx];
+      var sitemParent = analysis.findFileContaining(sarr, sitem);
+      if (DEBUG) console.log(filename + " -> " + handlerParent);
+      if (sitemParent && !lists.contains(out[filename], sitemParent))
+      {
+        out[filename].push(sitemParent);
+      }
+    }
+  }
+  return out;
+}
+
 //        //
 //  INIT  //
 //        //
@@ -86,11 +113,14 @@ sync.fiber(function()
 {
   // load contents of js files in sub-dirs
   var componentCode = sync.await(textFilesLoader.load(componentsPath, sync.defer()));
-      componentCode = lists.stripPaths(componentCode, rootDir);
   var actionCode = sync.await(textFilesLoader.load(actionsPath, sync.defer()));
-      actionCode = lists.stripPaths(actionCode, rootDir);
   var storeCode = sync.await(textFilesLoader.load(storesPath, sync.defer()));
-      storeCode = lists.stripPaths(storeCode, rootDir);
+
+  // deconstruct absolute paths into project relative path, filename and
+  // filename without extension
+  componentCode = lists.stripPaths(componentCode, rootDir);
+  actionCode = lists.stripPaths(actionCode, rootDir);
+  storeCode = lists.stripPaths(storeCode, rootDir);
 
   //console.log(componentCode)
   //process.exit(0);
@@ -127,24 +157,23 @@ sync.fiber(function()
   var compcomp = analysis.findLinesInContent(componentCode, pattern.COMPCOMP);
   if (DEBUG) helper.printList("COMPCOMP:", compcomp);
 
-  // resolve DISPATCH relations
-  var dispatch = [];
-  for (var filename in dispatchHandlers)
-  {
-    dispatch[filename] = [];
 
-    for (var handler_idx in dispatchHandlers[filename])
-    {
-      var handler = dispatchHandlers[filename][handler_idx];
-      var handlerParent = analysis.findFileContaining(handlers, handler);
-      //if (DEBUG) console.log(filename + " -> " + handlerParent);
-      if (handlerParent && !lists.contains(dispatch[filename], handlerParent))
-      {
-        dispatch[filename].push(handlerParent);
-      }
-    }
-  }
-  if (DEBUG) helper.printList("DISPATCH RELATIONS:", dispatch);
+  // resolv "dispatch" relations
+  var dispatch_rels = resolveRelations(dispatchHandlers, handlers)
+  if (DEBUG) helper.printList("DISPATCH RELATIONS:", dispatch_rels);
+
+  // resolve "uses" relations
+  var uses_rels = resolveRelations(compcomp, components);
+  if (DEBUG) helper.printList("USES RELATIONS:", uses_rels);
+
+  // resolve "call" relations
+  var call_rels = resolveRelations(calls, actions);
+  if (DEBUG) helper.printList("CALL RELATIONS:", call_rels);
+
+  // resolve "update" relations
+  var update_rels = resolveRelations(updates, stores);
+  if (DEBUG) helper.printList("UPDATE RELATIONS:", update_rels);
+
 
   //                   //
   //  GENERATE RESULT  //
@@ -158,15 +187,17 @@ sync.fiber(function()
   next_id = lists.addToNodesList(nodes, actions, "actions", next_id, urlPrefix);
   next_id = lists.addToNodesList(nodes, components, "components", next_id, urlPrefix);
 
-  console.log(nodes);
-
   // create edge list
   // TODO fix edge list generation
   var edges = [];
-  lists.addToEdgeList(nodes, edges, compcomp, "uses", "to", {color:'black'});
-  lists.addToEdgeList(nodes, edges, calls, "call", "to", {color:'blue'});
-  lists.addToEdgeList(nodes, edges, dispatch, "dispatch", "to", {color:'green'});
-  lists.addToEdgeList(nodes, edges, updates, "update", "from", {color:'brown'});
+  lists.addToEdgeList(nodes, edges, uses_rels, "uses", "to", {color:'black'});
+  lists.addToEdgeList(nodes, edges, call_rels, "call", "to", {color:'blue'});
+  lists.addToEdgeList(nodes, edges, dispatch_rels, "dispatch", "to", {color:'green'});
+  lists.addToEdgeList(nodes, edges, update_rels, "update", "from", {color:'brown'});
 
+  console.log("var nodes = ");
+  console.log(nodes);
+  console.log(";\nvar edges = ");
   console.log(edges);
+  console.log(";");
 });

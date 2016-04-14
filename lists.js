@@ -25,6 +25,7 @@ module.exports = {
           id:    next_id++,
           label: item,
           group: groupName,
+          path: file,
           github: urlPrefix + file
         });
       }
@@ -52,12 +53,12 @@ module.exports = {
       for(var i in nodeList)
       {
         var item = nodeList[i];
-        if (item.label.indexOf(file) > -1) {
+        if (item.path === file) {
           fromID = item.id;
         }
       }
 
-      if (fromID === undefined) console.log("WARN: (FROM) Node index for [" + file + "] not found!");
+      if (fromID === undefined) console.log("WARN: (" + label + ")(FROM) Node index for [" + file + "] not found!");
 
       for (var i in relationList[file])
       {
@@ -65,12 +66,12 @@ module.exports = {
         for(var j in nodeList)
         {
           var item = nodeList[j];
-          if (item.label.indexOf(relationList[file][i]) > -1) {
+          if (item.path == relationList[file][i]) {
             toID = item.id;
           }
         }
 
-        if (toID === undefined) console.log("WARN: (TO) Node index for [" + relationList[file][i] + "] not found!");
+        if (toID === undefined) console.log("WARN: (" + label + ")(TO) Node index for [" + relationList[file][i] + "] not found!");
 
         if (fromID !== undefined && toID !== undefined)
         {
