@@ -196,8 +196,8 @@ sync.fiber(function()
   lists.addToEdgeList(nodes, edges, update_rels, "update", "from", {color:'brown'});
 
   console.log("var nodes = ");
-  console.log(nodes);
+  console.log(JSON.stringify(nodes));
   console.log(";\nvar edges = ");
-  console.log(edges);
+  console.log(JSON.stringify(edges));
   console.log(";");
 });
