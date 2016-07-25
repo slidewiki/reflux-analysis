@@ -50,7 +50,8 @@ var pattern =
 
 function resolveRelations(rel, sarr)
 {
-  if (DEBUG) {
+  if (DEBUG)
+  {
     console.log("REL----------------------");
     console.log(rel);
     console.log("SARR---------------------");
