@@ -50,10 +50,12 @@ var pattern =
 
 function resolveRelations(rel, sarr)
 {
-  if (DEBUG) console.log("REL----------------------");
-  if (DEBUG) console.log(rel)
-  if (DEBUG) console.log("SARR---------------------");
-  if (DEBUG) console.log(sarr);
+  if (DEBUG) {
+    console.log("REL----------------------");
+    console.log(rel);
+    console.log("SARR---------------------");
+    console.log(sarr);
+  }
 
   out = []
   for (var filename in rel)
