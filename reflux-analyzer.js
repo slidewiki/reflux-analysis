@@ -135,7 +135,7 @@ sync.fiber(function()
 
   // search for Store definitions
   var stores = analysis.findLinesInContent(storeCode, pattern.STORE);
-  if (DEBUG) helper.printList("STROES:", stores);
+  if (DEBUG) helper.printList("STORES:", stores);
 
   // search for Handlers in Stores
   var handlers = analysis.findLinesInContent(storeCode, pattern.HANDLER);
