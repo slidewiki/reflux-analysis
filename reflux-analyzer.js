@@ -65,7 +65,9 @@ function resolveRelations(rel, sarr)
     {
       var sitem = rel[filename][idx];
       var sitemParent = analysis.findFileContaining(sarr, sitem);
-      if (DEBUG) console.log(filename + " -> " + handlerParent);
+      if (DEBUG && sitemParent) {
+        console.log(filename + " -> " + sitemParent);
+      }
       if (sitemParent && !lists.contains(out[filename], sitemParent))
       {
         out[filename].push(sitemParent);
